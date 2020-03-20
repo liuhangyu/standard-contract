@@ -9,9 +9,9 @@ package msp
 import (
 	"crypto"
 	"crypto/rand"
-	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
+	"fmt"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/pkg/errors"
+	"github.com/tjfoc/gmsm/sm2"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -29,7 +30,8 @@ type identity struct {
 	id *IdentityIdentifier
 
 	// cert contains the x.509 certificate that signs the public key of this instance
-	cert *x509.Certificate
+	// cert *x509.Certificate
+	cert *sm2.Certificate
 
 	// this is the public key of this instance
 	pk bccsp.Key
@@ -38,9 +40,9 @@ type identity struct {
 	msp *bccspmsp
 }
 
-func newIdentity(cert *x509.Certificate, pk bccsp.Key, msp *bccspmsp) (Identity, error) {
+func newIdentity(cert *sm2.Certificate, pk bccsp.Key, msp *bccspmsp) (Identity, error) {
 	if mspIdentityLogger.IsEnabledFor(zapcore.DebugLevel) {
-		mspIdentityLogger.Debugf("Creating identity instance for cert %s", certToPEM(cert))
+		mspIdentityLogger.Debugf("\nCreating identity instance for cert %s\n", certToPEM(cert))
 	}
 
 	// Sanitize first the certificate
@@ -65,7 +67,8 @@ func newIdentity(cert *x509.Certificate, pk bccsp.Key, msp *bccspmsp) (Identity,
 	id := &IdentityIdentifier{
 		Mspid: msp.name,
 		Id:    hex.EncodeToString(digest)}
-
+	//add liuhy
+	mspIdentityLogger.Debugf("\n===>Mspid:%s %v\n", msp.name, cert.Subject)
 	return &identity{id: id, cert: cert, pk: pk, msp: msp}, nil
 }
 
@@ -100,12 +103,14 @@ func (id *identity) GetOrganizationalUnits() []*OUIdentifier {
 		return nil
 	}
 
+	//	fmt.Println("id============", id)
 	cid, err := id.msp.getCertificationChainIdentifier(id)
 	if err != nil {
 		mspIdentityLogger.Errorf("Failed getting certification chain identifier for [%v]: [%+v]", id, err)
 
 		return nil
 	}
+	//fmt.Println("cid============", string(cid))
 
 	res := []*OUIdentifier{}
 	for _, unit := range id.cert.Subject.OrganizationalUnit {
@@ -113,6 +118,9 @@ func (id *identity) GetOrganizationalUnits() []*OUIdentifier {
 			OrganizationalUnitIdentifier: unit,
 			CertifiersIdentifier:         cid,
 		})
+		fmt.Println()
+		fmt.Println("unit==========1", (unit))
+		fmt.Println("unit==========2", string(cid))
 	}
 
 	return res
@@ -154,6 +162,8 @@ func (id *identity) Verify(msg []byte, sig []byte) error {
 	if err != nil {
 		return errors.WithMessage(err, "failed computing digest")
 	}
+	fmt.Printf("Verify: digest = %s", hex.Dump(digest))
+	fmt.Printf("Verify: hashOpt = %v", hashOpt)
 
 	if mspIdentityLogger.IsEnabledFor(zapcore.DebugLevel) {
 		mspIdentityLogger.Debugf("Verify: digest = %s", hex.Dump(digest))
@@ -193,8 +203,10 @@ func (id *identity) Serialize() ([]byte, error) {
 func (id *identity) getHashOpt(hashFamily string) (bccsp.HashOpts, error) {
 	switch hashFamily {
 	case bccsp.SHA2:
+		fmt.Println("SHA256\n")
 		return bccsp.GetHashOpt(bccsp.SHA256)
 	case bccsp.SHA3:
+		fmt.Println("SHA3_256\n")
 		return bccsp.GetHashOpt(bccsp.SHA3_256)
 	}
 	return nil, errors.Errorf("hash familiy not recognized [%s]", hashFamily)
@@ -208,7 +220,7 @@ type signingidentity struct {
 	signer crypto.Signer
 }
 
-func newSigningIdentity(cert *x509.Certificate, pk bccsp.Key, signer crypto.Signer, msp *bccspmsp) (SigningIdentity, error) {
+func newSigningIdentity(cert *sm2.Certificate, pk bccsp.Key, signer crypto.Signer, msp *bccspmsp) (SigningIdentity, error) {
 	//mspIdentityLogger.Infof("Creating signing identity instance for ID %s", id)
 	mspId, err := newIdentity(cert, pk, msp)
 	if err != nil {

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
+	// "code.uni-ledger.com/liuhangyu/fabric/core/chaincode/shim"
+	// pb "code.uni-ledger.com/liuhangyu/fabric/protos/peer"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )

@@ -81,9 +81,12 @@ var streamGetter peerStreamGetter
 //the non-mock user CC stream establishment func
 func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
 	flag.StringVar(&peerAddress, "peer.address", "", "peer address")
+	chaincodeLogger.Debug("peer.tls.enabled======", viper.GetBool("peer.tls.enabled"))
 	if viper.GetBool("peer.tls.enabled") {
 		keyPath := viper.GetString("tls.client.key.path")
 		certPath := viper.GetString("tls.client.cert.path")
+		chaincodeLogger.Debugf("keyPath======%s", keyPath)
+		chaincodeLogger.Debugf("certPath======%s", certPath)
 
 		data, err1 := ioutil.ReadFile(keyPath)
 		if err1 != nil {
@@ -92,7 +95,7 @@ func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
 			return nil, err1
 		}
 		key = string(data)
-
+		chaincodeLogger.Debugf("keyPath======%s  key=%s", keyPath, key)
 		data, err1 = ioutil.ReadFile(certPath)
 		if err1 != nil {
 			err1 = errors.Wrap(err1, fmt.Sprintf("error trying to read file content %s", certPath))
@@ -100,6 +103,7 @@ func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
 			return nil, err1
 		}
 		cert = string(data)
+		chaincodeLogger.Debugf("certPath======%s cert=%s", certPath, cert)
 	}
 
 	flag.Parse()
@@ -766,7 +770,7 @@ func validateCompositeKeyAttribute(str string) error {
 
 //To ensure that simple keys do not go into composite key namespace,
 //we validate simplekey to check whether the key starts with 0x00 (which
-//is the namespace for compositeKey). This helps in avoding simple/composite
+//is the namespace for compositeKey). This helps in avoiding simple/composite
 //key collisions.
 func validateSimpleKeys(simpleKeys ...string) error {
 	for _, key := range simpleKeys {

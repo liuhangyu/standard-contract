@@ -151,6 +151,20 @@ func SetupBCCSPKeystoreConfig(bccspConfig *factory.FactoryOpts, keystoreDir stri
 		}
 	}
 
+	//add liuhy for gm
+	if bccspConfig.ProviderName == "GM" {
+		if bccspConfig.SwOpts == nil {
+			bccspConfig.SwOpts = factory.GetDefaultOpts().SwOpts
+		}
+
+		// Only override the KeyStorePath if it was left empty
+		if bccspConfig.SwOpts.FileKeystore == nil ||
+			bccspConfig.SwOpts.FileKeystore.KeyStorePath == "" {
+			bccspConfig.SwOpts.Ephemeral = false
+			bccspConfig.SwOpts.FileKeystore = &factory.FileKeystoreOpts{KeyStorePath: keystoreDir}
+		}
+	}
+
 	return bccspConfig
 }
 
@@ -367,7 +381,7 @@ func loadCertificateAt(dir, certificatePath string, ouType string) []byte {
 	f := filepath.Join(dir, certificatePath)
 	raw, err := readFile(f)
 	if err != nil {
-		mspLogger.Infof("Failed loading %s certificate at [%s]: [%s]", ouType, f, err)
+		mspLogger.Warnf("Failed loading %s certificate at [%s]: [%s]", ouType, f, err)
 	} else {
 		return raw
 	}

@@ -8,14 +8,17 @@ package msp
 
 import (
 	"bytes"
-	"crypto/x509"
+	"fmt"
+
+	"time"
+
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"math/big"
 	"reflect"
-	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tjfoc/gmsm/sm2"
 )
 
 func (msp *bccspmsp) validateIdentity(id *identity) error {
@@ -54,7 +57,7 @@ func (msp *bccspmsp) validateCAIdentity(id *identity) error {
 	return msp.validateIdentityAgainstChain(id, validationChain)
 }
 
-func (msp *bccspmsp) validateTLSCAIdentity(cert *x509.Certificate, opts *x509.VerifyOptions) error {
+func (msp *bccspmsp) validateTLSCAIdentity(cert *sm2.Certificate, opts *sm2.VerifyOptions) error {
 	if !cert.IsCA {
 		return errors.New("Only CA identities can be validated")
 	}
@@ -71,11 +74,11 @@ func (msp *bccspmsp) validateTLSCAIdentity(cert *x509.Certificate, opts *x509.Ve
 	return msp.validateCertAgainstChain(cert, validationChain)
 }
 
-func (msp *bccspmsp) validateIdentityAgainstChain(id *identity, validationChain []*x509.Certificate) error {
+func (msp *bccspmsp) validateIdentityAgainstChain(id *identity, validationChain []*sm2.Certificate) error {
 	return msp.validateCertAgainstChain(id.cert, validationChain)
 }
 
-func (msp *bccspmsp) validateCertAgainstChain(cert *x509.Certificate, validationChain []*x509.Certificate) error {
+func (msp *bccspmsp) validateCertAgainstChain(cert *sm2.Certificate, validationChain []*sm2.Certificate) error {
 	// here we know that the identity is valid; now we have to check whether it has been revoked
 
 	// identify the SKI of the CA that signed this cert
@@ -175,6 +178,8 @@ func (msp *bccspmsp) validateIdentityOUsV11(id *identity) error {
 	// used to tell apart clients or peers.
 	counter := 0
 	for _, OU := range id.GetOrganizationalUnits() {
+		fmt.Println("\nOU===========1", string(OU.CertifiersIdentifier))
+		fmt.Println("\nOU===========2", OU.OrganizationalUnitIdentifier)
 		// Is OU.OrganizationalUnitIdentifier one of the special OUs?
 		var nodeOU *OUIdentifier
 		switch OU.OrganizationalUnitIdentifier {
@@ -191,11 +196,13 @@ func (msp *bccspmsp) validateIdentityOUsV11(id *identity) error {
 		if len(nodeOU.CertifiersIdentifier) != 0 && !bytes.Equal(nodeOU.CertifiersIdentifier, OU.CertifiersIdentifier) {
 			return errors.Errorf("certifiersIdentifier does not match: [%v], MSP: [%s]", id.GetOrganizationalUnits(), msp.name)
 		}
+		fmt.Println("counter =================", counter)
 		counter++
 		if counter > 1 {
 			break
 		}
 	}
+	fmt.Println("counter =================2 ", counter)
 	if counter != 1 {
 		return errors.Errorf("the identity must be a client or a peer identity to be valid, not a combination of them. OUs: [%v], MSP: [%s]", id.GetOrganizationalUnits(), msp.name)
 	}
@@ -257,13 +264,13 @@ func (msp *bccspmsp) validateIdentityOUsV143(id *identity) error {
 	return nil
 }
 
-func (msp *bccspmsp) getValidityOptsForCert(cert *x509.Certificate) x509.VerifyOptions {
+func (msp *bccspmsp) getValidityOptsForCert(cert *sm2.Certificate) sm2.VerifyOptions {
 	// First copy the opts to override the CurrentTime field
 	// in order to make the certificate passing the expiration test
 	// independently from the real local current time.
 	// This is a temporary workaround for FAB-3678
 
-	var tempOpts x509.VerifyOptions
+	var tempOpts sm2.VerifyOptions
 	tempOpts.Roots = msp.opts.Roots
 	tempOpts.DNSName = msp.opts.DNSName
 	tempOpts.Intermediates = msp.opts.Intermediates
@@ -318,7 +325,7 @@ func getAuthorityKeyIdentifierFromCrl(crl *pkix.CertificateList) ([]byte, error)
 
 // getSubjectKeyIdentifierFromCert returns the Subject Key Identifier for the supplied certificate
 // Subject Key Identifier is an identifier of the public key of this certificate
-func getSubjectKeyIdentifierFromCert(cert *x509.Certificate) ([]byte, error) {
+func getSubjectKeyIdentifierFromCert(cert *sm2.Certificate) ([]byte, error) {
 	var SKI []byte
 
 	for _, ext := range cert.Extensions {

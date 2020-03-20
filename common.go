@@ -11,6 +11,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	msp "github.com/hyperledger/fabric/protos/msp"
+	// "code.uni-ledger.com/liuhangyu/fabric/core/chaincode/shim"
+	// pb "code.uni-ledger.com/liuhangyu/fabric/protos/peer"
 )
 
 //获取CC环境参数
