@@ -1,0 +1,23 @@
+# Copyright Greg Haskins All Rights Reserved
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+FROM _BASE_NS_/fabric-baseimage:_BASE_TAG_
+#FROM golang:latest
+
+
+RUN npm install -g npm@latest
+COPY payload/chaintool payload/protoc-gen-go /usr/local/bin/
+
+RUN rm -rf /opt/go
+COPY payload/go /opt/go
+ENV GOCACHE="/opt/gopath/pkg"
+#RUN unset GOCACHE
+#RUN go env -w GOCACHE=/opt/gopath/pkg
+
+ADD payload/goshim.tar.bz2 $GOPATH/src/
+RUN mkdir -p /chaincode/input /chaincode/output
+
+#RUN  unset -v GOCACHE
+#ENV unset -v GOCACHE
+

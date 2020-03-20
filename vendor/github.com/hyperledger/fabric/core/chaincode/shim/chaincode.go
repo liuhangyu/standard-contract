@@ -87,6 +87,10 @@ func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
 		certPath := viper.GetString("tls.client.cert.path")
 		chaincodeLogger.Debugf("keyPath======%s", keyPath)
 		chaincodeLogger.Debugf("certPath======%s", certPath)
+		environ := os.Environ()
+		for i := range environ {
+			fmt.Println("env===", environ[i])
+		}
 
 		data, err1 := ioutil.ReadFile(keyPath)
 		if err1 != nil {
